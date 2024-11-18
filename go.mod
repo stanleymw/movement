@@ -1,4 +1,4 @@
-module github.com/stanleymw/test_raylib
+module github.com/stanleymw/movement
 
 go 1.23.2
 
