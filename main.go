@@ -7,17 +7,19 @@ import (
 	"image/color"
 )
 
-const sv_friction float32 = 7
+const sv_friction float32 = 6
 const sv_stopspeed float32 = 1
 
 const MAX_SPEED float32 = 4
-const MAX_AIR_SPEED float32 = 0.375
+const MAX_AIR_SPEED float32 = 0.5
 
-const sv_accelerate = 10
+const Pi = math.Pi
 
-func getWishDir() rl.Vector3 {
-	var dx float32
-	var dy float32
+const sv_accelerate = 16
+
+func getWishDir(cameraDirection rl.Vector3) rl.Vector3 {
+	var dx float64 = 0
+	var dy float64 = 0
 	if (rl.IsKeyDown(rl.KeyW)) {
 		dx += 1
 	}
@@ -32,7 +34,41 @@ func getWishDir() rl.Vector3 {
 		dy -= 1
 	}
 
-	return rl.Vector3Normalize(rl.Vector3{dx, dy, 0})
+	var angle float32
+	if (dx == 1) {
+		switch (dy) {
+			case 1:
+				angle = Pi/4
+			case 0:
+				angle = 0
+			case -1:
+				angle = -Pi/4
+		}
+	} else if (dx == -1) {
+		switch (dy) {
+			case 1:
+				angle = 3 * Pi / 4
+			case -0:
+				angle = Pi
+			case -1:
+				angle = - 3 * Pi / 4
+		}
+
+	} else {
+		switch (dy) {
+		case 1:
+			angle = Pi/2
+		case 0:
+			return rl.Vector3{0, 0, 0}
+		case -1:
+			angle = -Pi/2
+
+		}
+	}
+
+	rot := rl.Vector2Rotate(rl.Vector2{cameraDirection.X,cameraDirection.Z}, angle)
+	// return rl.Vector3Normalize(rl.Vector3{dx, dy, 0})
+	return rl.Vector3Normalize(rl.Vector3{rot.X,rot.Y,0})
 }
 
 type Cube struct {
@@ -147,48 +183,87 @@ func onGround(pos rl.Vector3, size rl.Vector3) bool {
 	return false
 }
 
+func limitPitchAngle(angle float32, up rl.Vector3, targetPos rl.Vector3) float32 {
+	// Clamp view up
+	maxAngleUp := rl.Vector3Angle(up, targetPos)
+	maxAngleUp = maxAngleUp - 0.01 // avoid numerical errors
+	if angle > maxAngleUp {
+		angle = maxAngleUp
+	}
+
+	// Clamp view down
+	maxAngleDown := rl.Vector3Angle(rl.Vector3Negate(up), targetPos)
+	maxAngleDown = -maxAngleDown + 0.01 // avoid numerical errors
+	if angle < maxAngleDown {
+		angle = maxAngleDown
+	}
+	return angle
+}
+
+type Player struct {
+	Position rl.Vector3
+	Velocity rl.Vector3
+	Size rl.Vector3
+}
+
 func main() {
 	rl.InitWindow(1920, 1080, "stanleymw's movement test")
 	defer rl.CloseWindow()
 
 	rl.SetTargetFPS(240)
 
-	var camera = rl.NewCamera3D(rl.Vector3{0,5,0}, rl.Vector3{1,0,0}, rl.Vector3{0,1,0}, 90.0, rl.CameraPerspective)
+	var camera = rl.NewCamera3D(rl.Vector3{0,0,0}, rl.Vector3{1,0,0}, rl.Vector3{0,1,0}, 90.0, rl.CameraPerspective)
 	
 	rl.DisableCursor()
 
 	var gravity float32 = -16
-	var velocity = rl.Vector3{0, 0, 0}
 
-	var playerSize = rl.Vector3{1, 2, 1}
+	var player Player = Player{rl.Vector3{0, 5, 0}, rl.Vector3{0, 0, 0}, rl.Vector3{1, 2, 1}}
+
+	var targetPosition = rl.Vector3{1, 0, 0}
 
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		var frametime = rl.GetFrameTime()
-		//var wishdir = getWishDir()
-		var wishdir = getWishDir()
-		var grounded = onGround(camera.Position, playerSize)
+		cameraRotation := rl.GetMouseDelta()
+
+		// apply X rotation
+		targetPosition = rl.Vector3RotateByAxisAngle(targetPosition, rl.GetCameraUp(&camera), -cameraRotation.X * 0.0015)
+		// apply Y rotation
+		targetPosition = rl.Vector3RotateByAxisAngle(targetPosition, rl.GetCameraRight(&camera), limitPitchAngle(-cameraRotation.Y * 0.0015, rl.GetCameraUp(&camera), targetPosition))
+
+		var wishdir = getWishDir(targetPosition)
+
+		// update player Velocity
+		var grounded = onGround(player.Position, player.Size)
 
 		if grounded {
 			// on ground
 			if (rl.IsKeyDown(rl.KeySpace)) {
-				velocity.Z = 6
+				player.Velocity.Z = 6
 			} else {
-				velocity.Z = 0
-				friction(&velocity, frametime)
-				accelerate(MAX_SPEED, &velocity, wishdir, frametime)
+				player.Velocity.Z = 0
+				friction(&player.Velocity, frametime)
+				accelerate(MAX_SPEED, &player.Velocity, wishdir, frametime)
 			}
 		} else {
 			// in air
-			airAccelerate(MAX_SPEED, &velocity, wishdir, frametime)
-			velocity.Z += gravity * frametime
+			airAccelerate(MAX_SPEED, &player.Velocity, wishdir, frametime)
+			player.Velocity.Z += gravity * frametime
 		}
-		// velocity = rl.Vector3{wishdir.X, wishdir.Y, velocity.Z}
 
-		rl.UpdateCameraPro(&camera,
-			rl.Vector3Scale(velocity, frametime),
-			rl.Vector3{rl.GetMouseDelta().X * 0.05, rl.GetMouseDelta().Y * 0.05, 0.0},
-			0.0)
+		// update player position
+		player.Position.X += player.Velocity.X * frametime
+		player.Position.Y += player.Velocity.Z * frametime
+		player.Position.Z += player.Velocity.Y * frametime
+
+		// update camera position
+		camera.Position.X = player.Position.X;
+		camera.Position.Y = player.Position.Y;
+		camera.Position.Z = player.Position.Z;
+		
+		// set camera rotation
+		camera.Target = rl.Vector3Add(camera.Position, targetPosition)
 
 		rl.ClearBackground(rl.RayWhite)
 
@@ -196,13 +271,19 @@ func main() {
 			drawMap()
 		rl.EndMode3D()
 
-		rl.DrawText(fmt.Sprintf(" %d fps\n %.3f, %.3f, %.3f\n %f\n %s", 
-		rl.GetFPS(), 
-		camera.Position.X, 
-		camera.Position.Y, 
-		camera.Position.Z,
-		rl.Vector2Length(rl.Vector2{velocity.X, velocity.Y}),
-		grounded), 0, 0, 32, rl.Black)
+		rl.DrawText(fmt.Sprintf(" %d fps\n %.2f, %.2f, %.2f\n vel=%.2f\n r: %.2f, %.2f\n %f %f\n cam=%v\n wd=%v\n g=%t", 
+			rl.GetFPS(), 
+			player.Position.X, 
+			player.Position.Y, 
+			player.Position.Z,
+			rl.Vector2Length(rl.Vector2{player.Velocity.X, player.Velocity.Y}),
+			cameraRotation.X,
+			cameraRotation.Y,
+			rl.Vector3Angle(rl.GetCameraUp(&camera), targetPosition),
+			rl.Vector3Angle(rl.GetCameraForward(&camera), targetPosition),
+			targetPosition,
+			wishdir,
+			grounded), 0, 0, 32, rl.Black)
 
 		rl.EndDrawing()
 	}
