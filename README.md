@@ -2,5 +2,5 @@
 Quake movement simulator
 
 - [x] Friction 
-- [ ] Air strafe
+- [x] Air strafe
 - [ ] Surf/Ramp speed
