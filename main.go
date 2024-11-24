@@ -20,6 +20,7 @@ const sv_accelerate = 16
 func getWishDir(cameraDirection rl.Vector3) rl.Vector3 {
 	var dx float64 = 0
 	var dy float64 = 0
+
 	if (rl.IsKeyDown(rl.KeyW)) {
 		dx += 1
 	}
@@ -80,7 +81,7 @@ type Cube struct {
 }
 
 var world []Cube = []Cube{
-	Cube{rl.Vector3{0,0,0}, 10, 0.1, 10, rl.Red},
+	Cube{rl.Vector3{0,0,0}, 10, 0.1, 10, rl.DarkGray},
 	Cube{rl.Vector3{1,0,0}, 1, 1, 1, rl.Blue},
 	Cube{rl.Vector3{3,0.2,2}, 1, 1, 1, rl.Green},
 	Cube{rl.Vector3{5,0.4,3}, 1, 1, 1, rl.Orange},
