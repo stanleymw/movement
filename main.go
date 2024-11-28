@@ -229,9 +229,9 @@ func main() {
 		cameraRotation := rl.GetMouseDelta()
 
 		// apply X rotation
-		targetPosition = rl.Vector3RotateByAxisAngle(targetPosition, rl.GetCameraUp(&camera), -cameraRotation.X * 0.0015)
+		targetPosition = rl.Vector3RotateByAxisAngle(targetPosition, rl.GetCameraUp(&camera), -cameraRotation.X * 0.0012)
 		// apply Y rotation
-		targetPosition = rl.Vector3RotateByAxisAngle(targetPosition, rl.GetCameraRight(&camera), limitPitchAngle(-cameraRotation.Y * 0.0015, rl.GetCameraUp(&camera), targetPosition))
+		targetPosition = rl.Vector3RotateByAxisAngle(targetPosition, rl.GetCameraRight(&camera), limitPitchAngle(-cameraRotation.Y * 0.0012, rl.GetCameraUp(&camera), targetPosition))
 
 		var wishdir = getWishDir(targetPosition)
 
@@ -240,7 +240,7 @@ func main() {
 
 		if grounded {
 			// on ground
-			if (rl.IsKeyDown(rl.KeySpace)) {
+			if (rl.IsKeyDown(rl.KeySpace) || rl.GetMouseWheelMove() != 0) {
 				player.Velocity.Z = 6
 			} else {
 				player.Velocity.Z = 0
@@ -272,19 +272,20 @@ func main() {
 			drawMap()
 		rl.EndMode3D()
 
-		rl.DrawText(fmt.Sprintf(" %d fps\n %.2f, %.2f, %.2f\n vel=%.2f\n r: %.2f, %.2f\n %f %f\n cam=%v\n wd=%v\n g=%t", 
+		rl.DrawText(fmt.Sprintf(" %d fps\n %.2f, %.2f, %.2f\n vel=%.2f\n r: %.2f, %.2f\n %f %f\n cam=%v\n wd=%v\n g=%t \n mw=%f", 
 			rl.GetFPS(), 
 			player.Position.X, 
 			player.Position.Y, 
 			player.Position.Z,
-			rl.Vector2Length(rl.Vector2{player.Velocity.X, player.Velocity.Y}),
+			rl.Vector2Length(rl.Vector2{X: player.Velocity.X, Y: player.Velocity.Y}),
 			cameraRotation.X,
 			cameraRotation.Y,
 			rl.Vector3Angle(rl.GetCameraUp(&camera), targetPosition),
 			rl.Vector3Angle(rl.GetCameraForward(&camera), targetPosition),
 			targetPosition,
 			wishdir,
-			grounded), 0, 0, 32, rl.Black)
+			grounded,
+			rl.GetMouseWheelMove()), 0, 0, 32, rl.Black)
 
 		rl.EndDrawing()
 	}
