@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image/color"
+	"log"
 	"math"
 	"math/rand"
 
@@ -18,6 +20,7 @@ const MAX_AIR_SPEED float32 = 0.5
 const Pi = math.Pi
 
 const sv_accelerate = 16
+const gravity float32 = -16
 
 func getWishDir(cameraDirection rl.Vector3) rl.Vector3 {
 	var dx float64 = 0
@@ -211,25 +214,26 @@ type Player struct {
 func main() {
 	rl.InitWindow(1920, 1080, "stanleymw's movement test")
 	defer rl.CloseWindow()
-
 	rl.SetTargetFPS(240)
-
-	var camera = rl.NewCamera3D(rl.Vector3{0, 0, 0}, rl.Vector3{1, 0, 0}, rl.Vector3{0, 1, 0}, 90.0, rl.CameraPerspective)
-
 	rl.DisableCursor()
 
-	var gravity float32 = -16
 
+	var camera = rl.NewCamera3D(rl.Vector3{0, 0, 0}, rl.Vector3{1, 0, 0}, rl.Vector3{0, 1, 0}, 90.0, rl.CameraPerspective)
 	var player Player = Player{rl.Vector3{0, 5, 0}, rl.Vector3{0, 0, 0}, rl.Vector3{1, 2, 1}}
-
 	var targetPosition = rl.Vector3{1, 0, 0}
 
-	lastGeneratedPos := rl.Vector3{0, 0, 0}
+	
+	seed := flag.Int64("seed", rand.Int63(), "Seed of the world to generate")
+	flag.Parse()
 
+	log.Printf("Generating world with seed: %d", *seed)
+	gen := rand.New(rand.NewSource(*seed))
+
+	lastGeneratedPos := rl.Vector3{0, 0, 0}
 	for i := 0; i < 5e3; i++ {
-		dx := rand.Float32()*10.0 - 5.0
-		dy := rand.Float32()*2.0 - 1.0
-		dz := rand.Float32()*10.0 - 5.0
+		dx := gen.Float32()*10.0 - 5.0
+		dy := gen.Float32()*2.0 - 1.0
+		dz := gen.Float32()*10.0 - 5.0
 		lastGeneratedPos = rl.Vector3Add(lastGeneratedPos, rl.Vector3{dx, dy, dz})
 		// pos := rl.Vector3{X: float32(10 * math.Cos(float64(i)/20.0*math.Pi)), Y: float32(i) / 20.0, Z: float32(10 * math.Sin(float64(i)/20.0*math.Pi))}
 		color := color.RGBA{uint8(i%120 + 50), 0, 0, 255}
@@ -273,6 +277,12 @@ func main() {
 		player.Position.X += player.Velocity.X * frametime
 		player.Position.Y += player.Velocity.Z * frametime
 		player.Position.Z += player.Velocity.Y * frametime
+
+
+		if rl.IsKeyDown(rl.KeyR) {
+			player.Position = rl.Vector3{0, 3, 0}
+			player.Velocity = rl.Vector3{0, 0, 0}
+		}
 
 		// update camera position
 		camera.Position.X = player.Position.X
