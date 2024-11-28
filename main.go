@@ -237,6 +237,8 @@ func main() {
 		world = append(world, Cube{lastGeneratedPos, 1.5, 0.2, 1.5, color})
 	}
 
+	world = append(world, Cube{lastGeneratedPos, 16, 0.4, 16, color.RGBA{20, 170, 195, 255}})
+
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		var frametime = rl.GetFrameTime()
