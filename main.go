@@ -212,6 +212,9 @@ type Player struct {
 }
 
 func main() {
+	seed := flag.Int64("seed", rand.Int63(), "Seed of the world to generate")
+	flag.Parse()
+
 	rl.InitWindow(1920, 1080, "stanleymw's movement test")
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(240)
@@ -221,11 +224,7 @@ func main() {
 	var camera = rl.NewCamera3D(rl.Vector3{0, 0, 0}, rl.Vector3{1, 0, 0}, rl.Vector3{0, 1, 0}, 90.0, rl.CameraPerspective)
 	var player Player = Player{rl.Vector3{0, 5, 0}, rl.Vector3{0, 0, 0}, rl.Vector3{1, 2, 1}}
 	var targetPosition = rl.Vector3{1, 0, 0}
-
 	
-	seed := flag.Int64("seed", rand.Int63(), "Seed of the world to generate")
-	flag.Parse()
-
 	log.Printf("Generating world with seed: %d", *seed)
 	gen := rand.New(rand.NewSource(*seed))
 
