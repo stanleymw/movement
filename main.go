@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"strconv"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -222,9 +223,11 @@ func hashString(inp string) uint64 {
 }
 
 func main() {
-	seedf := flag.String("seed", "", "Seed of the world to generate. No seed/empty seed will generate a random map.")
+	seedf := flag.String("seed", strconv.FormatInt(rand.Int63(), 10), "Seed of the world to generate. No seed/empty seed will generate a random map.")
 	flag.Parse()
 
+	//rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowHighdpi)
+	rl.SetConfigFlags(rl.FlagWindowResizable)
 	rl.InitWindow(1920, 1080, "stanleymw's movement test")
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(240)
@@ -235,12 +238,7 @@ func main() {
 	var player Player = Player{rl.Vector3{0, 5, 0}, rl.Vector3{0, 0, 0}, rl.Vector3{1, 2, 1}}
 	var targetPosition = rl.Vector3{1, 0, 0}
 
-	var seed int64
-	if (*seedf == "") {
-		seed = rand.Int63()
-	} else {
-		seed = int64(hashString(*seedf))
-	}
+	seed := int64(hashString(*seedf))
 	log.Printf("Generating world with seed: %d from user: %s", seed, *seedf)
 	gen := rand.New(rand.NewSource(seed))
 
@@ -327,6 +325,8 @@ func main() {
 			wishdir,
 			grounded,
 			rl.GetMouseWheelMove()), 0, 0, 32, rl.Black)
+
+		// rl.DrawText("vel", 960, 540, 32, rl.Black)
 
 		rl.EndDrawing()
 	}

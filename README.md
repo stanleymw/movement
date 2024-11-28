@@ -3,4 +3,8 @@ Quake movement simulator
 
 - [x] Friction 
 - [x] Air strafe
-- [ ] Surf/Ramp speed
+- [x] Reset
+- [ ] Timer
+- [ ] Surf/Ramp physics
+- [ ] Real collision
+- [ ] Load CS/Quake (.bsp) maps
