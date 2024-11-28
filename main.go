@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"image/color"
 	"log"
 	"math"
@@ -21,6 +22,8 @@ const Pi = math.Pi
 
 const sv_accelerate = 16
 const gravity float32 = -16
+
+var hasher = fnv.New64a()
 
 func getWishDir(cameraDirection rl.Vector3) rl.Vector3 {
 	var dx float64 = 0
@@ -211,8 +214,15 @@ type Player struct {
 	Size     rl.Vector3
 }
 
+func hashString(inp string) uint64 {
+	hasher.Write([]byte(inp))
+	s := hasher.Sum64()
+	hasher.Reset()
+	return s
+}
+
 func main() {
-	seed := flag.Int64("seed", rand.Int63(), "Seed of the world to generate")
+	seedf := flag.String("seed", "", "Seed of the world to generate. No seed/empty seed will generate a random map.")
 	flag.Parse()
 
 	rl.InitWindow(1920, 1080, "stanleymw's movement test")
@@ -224,9 +234,15 @@ func main() {
 	var camera = rl.NewCamera3D(rl.Vector3{0, 0, 0}, rl.Vector3{1, 0, 0}, rl.Vector3{0, 1, 0}, 90.0, rl.CameraPerspective)
 	var player Player = Player{rl.Vector3{0, 5, 0}, rl.Vector3{0, 0, 0}, rl.Vector3{1, 2, 1}}
 	var targetPosition = rl.Vector3{1, 0, 0}
-	
-	log.Printf("Generating world with seed: %d", *seed)
-	gen := rand.New(rand.NewSource(*seed))
+
+	var seed int64
+	if (*seedf == "") {
+		seed = rand.Int63()
+	} else {
+		seed = int64(hashString(*seedf))
+	}
+	log.Printf("Generating world with seed: %d from user: %s", seed, *seedf)
+	gen := rand.New(rand.NewSource(seed))
 
 	lastGeneratedPos := rl.Vector3{0, 0, 0}
 	for i := 0; i < 5e3; i++ {
