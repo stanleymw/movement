@@ -257,7 +257,6 @@ func main() {
 	world = append(world, Cube{lastGeneratedPos, 16, 0.4, 16, color.RGBA{20, 170, 195, 255}})
 
 	for !rl.WindowShouldClose() {
-		rl.BeginDrawing()
 		var frametime = rl.GetFrameTime()
 		cameraRotation := rl.GetMouseDelta()
 
@@ -305,18 +304,22 @@ func main() {
 		// set camera rotation
 		camera.Target = rl.Vector3Add(camera.Position, targetPosition)
 
+
+
+		rl.BeginDrawing()
+
 		rl.ClearBackground(rl.RayWhite)
 
 		rl.BeginMode3D(camera)
 		drawMap()
 		rl.EndMode3D()
 
-		rl.DrawText(fmt.Sprintf(" %d fps\n %.2f, %.2f, %.2f\n vel=%.2f\n r: %.2f, %.2f\n %f %f\n cam=%v\n wd=%v\n g=%t \n mw=%f",
+		// debug text
+		rl.DrawText(fmt.Sprintf(" %d fps\n %.2f, %.2f, %.2f\n r: %.2f, %.2f\n %f %f\n cam=%v\n wd=%v\n g=%t \n mw=%f",
 			rl.GetFPS(),
 			player.Position.X,
 			player.Position.Y,
 			player.Position.Z,
-			rl.Vector2Length(rl.Vector2{X: player.Velocity.X, Y: player.Velocity.Y}),
 			cameraRotation.X,
 			cameraRotation.Y,
 			rl.Vector3Angle(rl.GetCameraUp(&camera), targetPosition),
@@ -326,7 +329,10 @@ func main() {
 			grounded,
 			rl.GetMouseWheelMove()), 0, 0, 32, rl.Black)
 
-		// rl.DrawText("vel", 960, 540, 32, rl.Black)
+		velStr := fmt.Sprintf("%.3f", rl.Vector2Length(rl.Vector2{X: player.Velocity.X, Y: player.Velocity.Y}))
+		velLen := rl.MeasureText(velStr, 48)
+
+		rl.DrawText(velStr, int32(rl.GetScreenWidth()/2) - velLen/2, int32(rl.GetScreenHeight()/4 * 3) - 32, 32, rl.SkyBlue)
 
 		rl.EndDrawing()
 	}
