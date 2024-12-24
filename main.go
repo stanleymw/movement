@@ -19,8 +19,8 @@ const sv_stopspeed float32 = 1
 const MAX_SPEED float32 = 4
 const MAX_AIR_SPEED float32 = 0.5
 
-const RENDER_DISTANCE = 13
-const CHUNK_SIZE = 16
+const RENDER_DISTANCE = 7
+const CHUNK_SIZE = 32
 const HP = (RENDER_DISTANCE - 1) / 2
 
 const Pi = math.Pi
@@ -330,10 +330,10 @@ func main() {
 	gen := rand.New(rand.NewSource(seed))
 
 	lastGeneratedPos := rl.Vector3{0, 0, 0}
-	for i := 0; i < 5e5; i++ {
-		dx := gen.Float32()*10.0 - 5.0
-		dy := gen.Float32()*2.0 - 1.0
-		dz := gen.Float32()*10.0 - 5.0
+	for i := 0; i < 5e4; i++ {
+		dx := gen.Float32()*16.0 - 8.0
+		dy := gen.Float32()*4.0 - 2.0
+		dz := gen.Float32()*16.0 - 8.0
 		lastGeneratedPos = rl.Vector3Add(lastGeneratedPos, rl.Vector3{dx, dy, dz})
 		// pos := rl.Vector3{X: float32(10 * math.Cos(float64(i)/20.0*math.Pi)), Y: float32(i) / 20.0, Z: float32(10 * math.Sin(float64(i)/20.0*math.Pi))}
 		color := color.RGBA{uint8(i%120 + 50), 0, 0, 255}
@@ -341,7 +341,7 @@ func main() {
 		world.createCube(lastGeneratedPos, rl.Vector3{1.5, 0.2, 1.5}, color)
 	}
 
-	// world = append(world, Cube{lastGeneratedPos, 16, 0.4, 16, color.RGBA{20, 170, 195, 255}})
+	world.createCube(lastGeneratedPos, rl.Vector3{16, 0.4, 16}, color.RGBA{20, 170, 195, 255})
 
 	for !rl.WindowShouldClose() {
 		var frametime = rl.GetFrameTime()
