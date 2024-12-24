@@ -111,8 +111,7 @@ type ChunkIndex struct {
 
 type World map[ChunkIndex]*Chunk
 
-
-var world World;
+var world World
 
 func (x Cube) render() {
 	rl.DrawCube(x.position, x.width, x.height, x.length, x.col)
@@ -124,8 +123,8 @@ func (x Chunk) render() {
 	}
 }
 
-func (x Player) getCurrentChunkIndex() (ChunkIndex) {
-	return ChunkIndex{int(x.Position.X/CHUNK_SIZE), int(x.Position.Z/CHUNK_SIZE)}
+func (x Player) getCurrentChunkIndex() ChunkIndex {
+	return ChunkIndex{int(x.Position.X / CHUNK_SIZE), int(x.Position.Z / CHUNK_SIZE)}
 }
 
 func (x Player) getCurrentChunk() (*Chunk, bool) {
@@ -143,7 +142,7 @@ func (x Player) drawMap() {
 	for dx := range RENDER_DISTANCE {
 		for dz := range RENDER_DISTANCE {
 			chunk, ok := getChunkAt(ChunkIndex{ind.X + dx - HP, ind.Y + dz - HP})
-			if (ok) {
+			if ok {
 				chunk.render()
 			}
 		}
@@ -218,14 +217,12 @@ func airAccelerate(wishspeed float32, velocity *rl.Vector3, wishdir rl.Vector3, 
 	(*velocity).Z += wishdir.Z * accelspeed
 }
 
-
-
 func (x Player) onGroundInChunk(cind ChunkIndex) bool {
 	entityBox := rl.BoundingBox{rl.Vector3{x.Position.X - x.Size.X/2, x.Position.Y - x.Size.Y/2, x.Position.Z - x.Size.Z/2},
 		rl.Vector3{x.Position.X + x.Size.X/2, x.Position.Y + x.Size.Y/2, x.Position.Z + x.Size.Z/2}}
 
 	chunk, ok := getChunkAt(cind)
-	if (!ok) {
+	if !ok {
 		return false
 	}
 
@@ -236,7 +233,7 @@ func (x Player) onGroundInChunk(cind ChunkIndex) bool {
 
 		//rl.DrawBoundingBox(objBox, rl.Green);
 
-		if rl.CheckCollisionBoxes(entityBox, objBox) && (x.Position.Y- x.Size.Y/2 <= obj.position.Y+obj.height/2) {
+		if rl.CheckCollisionBoxes(entityBox, objBox) && (x.Position.Y-x.Size.Y/2 <= obj.position.Y+obj.height/2) {
 			return true
 		}
 	}
@@ -246,7 +243,7 @@ func (x Player) onGroundInChunk(cind ChunkIndex) bool {
 
 func (x Player) onGround() bool {
 	loc := x.getCurrentChunkIndex()
-	
+
 	if x.onGroundInChunk(loc) {
 		return true
 	}
@@ -294,20 +291,19 @@ func hashString(inp string) uint64 {
 	return s
 }
 
-
 func (x World) createCube(pos rl.Vector3, size rl.Vector3, color color.RGBA) {
-		chunkInd := ChunkIndex{int(pos.X/CHUNK_SIZE), int(pos.Z/CHUNK_SIZE)}
-		chunk, exists := x[chunkInd]
+	chunkInd := ChunkIndex{int(pos.X / CHUNK_SIZE), int(pos.Z / CHUNK_SIZE)}
+	chunk, exists := x[chunkInd]
 
-		if (!exists) {
-			chunk = &Chunk{cubes: []Cube{}}
-			x[chunkInd] = chunk
-			// log.Printf("made for %v", chunkInd)
-		}
+	if !exists {
+		chunk = &Chunk{cubes: []Cube{}}
+		x[chunkInd] = chunk
+		// log.Printf("made for %v", chunkInd)
+	}
 
-		// log.Printf("chunk now: %p for %v", &chunk, chunkInd)
+	// log.Printf("chunk now: %p for %v", &chunk, chunkInd)
 
-		chunk.cubes = append(chunk.cubes, Cube{pos, size.X, size.Y, size.Z, color})
+	chunk.cubes = append(chunk.cubes, Cube{pos, size.X, size.Y, size.Z, color})
 }
 
 func main() {
@@ -323,7 +319,7 @@ func main() {
 
 	world = make(World)
 
-	world.createCube(rl.Vector3{0,0,0}, rl.Vector3{10,1,10}, rl.Gray)
+	world.createCube(rl.Vector3{0, 0, 0}, rl.Vector3{10, 1, 10}, rl.Gray)
 
 	var camera = rl.NewCamera3D(rl.Vector3{0, 0, 0}, rl.Vector3{1, 0, 0}, rl.Vector3{0, 1, 0}, 90.0, rl.CameraPerspective)
 	var player Player = Player{rl.Vector3{0, 5, 0}, rl.Vector3{0, 0, 0}, rl.Vector3{1, 2, 1}}
@@ -381,7 +377,6 @@ func main() {
 		player.Position.Y += player.Velocity.Z * frametime
 		player.Position.Z += player.Velocity.Y * frametime
 
-
 		if rl.IsKeyDown(rl.KeyR) {
 			player.Position = rl.Vector3{0, 3, 0}
 			player.Velocity = rl.Vector3{0, 0, 0}
@@ -394,8 +389,6 @@ func main() {
 
 		// set camera rotation
 		camera.Target = rl.Vector3Add(camera.Position, targetPosition)
-
-
 
 		rl.BeginDrawing()
 
@@ -423,7 +416,7 @@ func main() {
 		velStr := fmt.Sprintf("%.3f", rl.Vector2Length(rl.Vector2{X: player.Velocity.X, Y: player.Velocity.Y}))
 		velLen := rl.MeasureText(velStr, 48)
 
-		rl.DrawText(velStr, int32(rl.GetScreenWidth()/2) - velLen/2, int32(rl.GetScreenHeight()/4 * 3) - 32, 32, rl.SkyBlue)
+		rl.DrawText(velStr, int32(rl.GetScreenWidth()/2)-velLen/2, int32(rl.GetScreenHeight()/4*3)-32, 32, rl.SkyBlue)
 
 		rl.EndDrawing()
 	}
