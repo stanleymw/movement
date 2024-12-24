@@ -19,9 +19,14 @@ const sv_stopspeed float32 = 1
 const MAX_SPEED float32 = 4
 const MAX_AIR_SPEED float32 = 0.5
 
+const RENDER_DISTANCE = 13
+const CHUNK_SIZE = 16
+const HP = (RENDER_DISTANCE - 1) / 2
+
 const Pi = math.Pi
 
 const sv_accelerate = 16
+const sv_airaccelerate = 48
 const gravity float32 = -16
 
 var hasher = fnv.New64a()
@@ -89,20 +94,59 @@ type Cube struct {
 	col      color.RGBA
 }
 
-var world []Cube = []Cube{
-	Cube{rl.Vector3{0, 0, 0}, 10, 0.1, 10, rl.DarkGray},
-	Cube{rl.Vector3{1, 0, 0}, 1, 1, 1, rl.Blue},
-	Cube{rl.Vector3{3, 0.2, 2}, 1, 1, 1, rl.Green},
-	Cube{rl.Vector3{5, 0.4, 3}, 1, 1, 1, rl.Orange},
-	Cube{rl.Vector3{7, 0.2, 1}, 1, 1, 1, rl.Purple}}
+type Chunk struct {
+	cubes []Cube
+}
+
+type Player struct {
+	Position rl.Vector3
+	Velocity rl.Vector3
+	Size     rl.Vector3
+}
+
+type ChunkIndex struct {
+	X int
+	Y int
+}
+
+type World map[ChunkIndex]*Chunk
+
+
+var world World;
 
 func (x Cube) render() {
 	rl.DrawCube(x.position, x.width, x.height, x.length, x.col)
 }
 
-func drawMap() {
-	for _, obj := range world {
-		obj.render()
+func (x Chunk) render() {
+	for _, cube := range x.cubes {
+		cube.render()
+	}
+}
+
+func (x Player) getCurrentChunkIndex() (ChunkIndex) {
+	return ChunkIndex{int(x.Position.X/CHUNK_SIZE), int(x.Position.Z/CHUNK_SIZE)}
+}
+
+func (x Player) getCurrentChunk() (*Chunk, bool) {
+	chunk, ok := world[x.getCurrentChunkIndex()]
+	return chunk, ok
+}
+
+func getChunkAt(loc ChunkIndex) (*Chunk, bool) {
+	chunk, ok := world[loc]
+	return chunk, ok
+}
+
+func (x Player) drawMap() {
+	ind := x.getCurrentChunkIndex()
+	for dx := range RENDER_DISTANCE {
+		for dz := range RENDER_DISTANCE {
+			chunk, ok := getChunkAt(ChunkIndex{ind.X + dx - HP, ind.Y + dz - HP})
+			if (ok) {
+				chunk.render()
+			}
+		}
 	}
 }
 
@@ -164,7 +208,7 @@ func airAccelerate(wishspeed float32, velocity *rl.Vector3, wishdir rl.Vector3, 
 		return
 	}
 
-	accelspeed := sv_accelerate * wishspeed * frametime
+	accelspeed := sv_airaccelerate * wishspeed * frametime
 	if accelspeed > addspeed {
 		accelspeed = addspeed
 	}
@@ -174,21 +218,55 @@ func airAccelerate(wishspeed float32, velocity *rl.Vector3, wishdir rl.Vector3, 
 	(*velocity).Z += wishdir.Z * accelspeed
 }
 
-func onGround(pos rl.Vector3, size rl.Vector3) bool {
-	entityBox := rl.BoundingBox{rl.Vector3{pos.X - size.X/2, pos.Y - size.Y/2, pos.Z - size.Z/2},
-		rl.Vector3{pos.X + size.X/2, pos.Y + size.Y/2, pos.Z + size.Z/2}}
 
-	for _, obj := range world {
+
+func (x Player) onGroundInChunk(cind ChunkIndex) bool {
+	entityBox := rl.BoundingBox{rl.Vector3{x.Position.X - x.Size.X/2, x.Position.Y - x.Size.Y/2, x.Position.Z - x.Size.Z/2},
+		rl.Vector3{x.Position.X + x.Size.X/2, x.Position.Y + x.Size.Y/2, x.Position.Z + x.Size.Z/2}}
+
+	chunk, ok := getChunkAt(cind)
+	if (!ok) {
+		return false
+	}
+
+	for _, obj := range chunk.cubes {
 		//col := GetRayCollisionBox(rl.Ray{pos, rl.Vector3{0, -1, 0}}, box BoundingBox) RayCollision
 		objBox := rl.BoundingBox{rl.Vector3{obj.position.X - obj.width/2, obj.position.Y - obj.height/2, obj.position.Z - obj.length/2},
 			rl.Vector3{obj.position.X + obj.width/2, obj.position.Y + obj.height/2, obj.position.Z + obj.length/2}}
 
 		//rl.DrawBoundingBox(objBox, rl.Green);
 
-		if rl.CheckCollisionBoxes(entityBox, objBox) && (pos.Y-size.Y/2 <= obj.position.Y+obj.height/2) {
+		if rl.CheckCollisionBoxes(entityBox, objBox) && (x.Position.Y- x.Size.Y/2 <= obj.position.Y+obj.height/2) {
 			return true
 		}
 	}
+
+	return false
+}
+
+func (x Player) onGround() bool {
+	loc := x.getCurrentChunkIndex()
+	
+	if x.onGroundInChunk(loc) {
+		return true
+	}
+
+	if x.onGroundInChunk(ChunkIndex{loc.X - 1, loc.Y}) {
+		return true
+	}
+
+	if x.onGroundInChunk(ChunkIndex{loc.X + 1, loc.Y}) {
+		return true
+	}
+
+	if x.onGroundInChunk(ChunkIndex{loc.X, loc.Y + 1}) {
+		return true
+	}
+
+	if x.onGroundInChunk(ChunkIndex{loc.X, loc.Y - 1}) {
+		return true
+	}
+
 	return false
 }
 
@@ -209,17 +287,27 @@ func limitPitchAngle(angle float32, up rl.Vector3, targetPos rl.Vector3) float32
 	return angle
 }
 
-type Player struct {
-	Position rl.Vector3
-	Velocity rl.Vector3
-	Size     rl.Vector3
-}
-
 func hashString(inp string) uint64 {
 	hasher.Write([]byte(inp))
 	s := hasher.Sum64()
 	hasher.Reset()
 	return s
+}
+
+
+func (x World) createCube(pos rl.Vector3, size rl.Vector3, color color.RGBA) {
+		chunkInd := ChunkIndex{int(pos.X/CHUNK_SIZE), int(pos.Z/CHUNK_SIZE)}
+		chunk, exists := x[chunkInd]
+
+		if (!exists) {
+			chunk = &Chunk{cubes: []Cube{}}
+			x[chunkInd] = chunk
+			// log.Printf("made for %v", chunkInd)
+		}
+
+		// log.Printf("chunk now: %p for %v", &chunk, chunkInd)
+
+		chunk.cubes = append(chunk.cubes, Cube{pos, size.X, size.Y, size.Z, color})
 }
 
 func main() {
@@ -233,6 +321,9 @@ func main() {
 	rl.SetTargetFPS(240)
 	rl.DisableCursor()
 
+	world = make(World)
+
+	world.createCube(rl.Vector3{0,0,0}, rl.Vector3{10,1,10}, rl.Gray)
 
 	var camera = rl.NewCamera3D(rl.Vector3{0, 0, 0}, rl.Vector3{1, 0, 0}, rl.Vector3{0, 1, 0}, 90.0, rl.CameraPerspective)
 	var player Player = Player{rl.Vector3{0, 5, 0}, rl.Vector3{0, 0, 0}, rl.Vector3{1, 2, 1}}
@@ -243,7 +334,7 @@ func main() {
 	gen := rand.New(rand.NewSource(seed))
 
 	lastGeneratedPos := rl.Vector3{0, 0, 0}
-	for i := 0; i < 5e3; i++ {
+	for i := 0; i < 5e5; i++ {
 		dx := gen.Float32()*10.0 - 5.0
 		dy := gen.Float32()*2.0 - 1.0
 		dz := gen.Float32()*10.0 - 5.0
@@ -251,10 +342,10 @@ func main() {
 		// pos := rl.Vector3{X: float32(10 * math.Cos(float64(i)/20.0*math.Pi)), Y: float32(i) / 20.0, Z: float32(10 * math.Sin(float64(i)/20.0*math.Pi))}
 		color := color.RGBA{uint8(i%120 + 50), 0, 0, 255}
 
-		world = append(world, Cube{lastGeneratedPos, 1.5, 0.2, 1.5, color})
+		world.createCube(lastGeneratedPos, rl.Vector3{1.5, 0.2, 1.5}, color)
 	}
 
-	world = append(world, Cube{lastGeneratedPos, 16, 0.4, 16, color.RGBA{20, 170, 195, 255}})
+	// world = append(world, Cube{lastGeneratedPos, 16, 0.4, 16, color.RGBA{20, 170, 195, 255}})
 
 	for !rl.WindowShouldClose() {
 		var frametime = rl.GetFrameTime()
@@ -268,7 +359,7 @@ func main() {
 		var wishdir = getWishDir(targetPosition)
 
 		// update player Velocity
-		var grounded = onGround(player.Position, player.Size)
+		var grounded = player.onGround()
 
 		if grounded {
 			// on ground
@@ -311,7 +402,7 @@ func main() {
 		rl.ClearBackground(rl.RayWhite)
 
 		rl.BeginMode3D(camera)
-		drawMap()
+		player.drawMap()
 		rl.EndMode3D()
 
 		// debug text
